@@ -14,7 +14,7 @@ static func run_all() -> Array[Dictionary]:
 
 static func _test_initial_state() -> Dictionary:
 	GameState.reset_run()
-	var pass_ok := (
+	var pass_ok: bool = (
 		GameState.gold == GameState.STARTING_GOLD and
 		GameState.lives == GameState.STARTING_LIVES and
 		GameState.phase == GameState.Phase.BUILD and
@@ -25,14 +25,14 @@ static func _test_initial_state() -> Dictionary:
 
 static func _test_spend_add_gold() -> Dictionary:
 	GameState.reset_run()
-	var start_gold := GameState.gold
-	var spent := GameState.try_spend_gold(50)
-	var pass_spend := spent and GameState.gold == (start_gold - 50)
+	var start_gold: int = GameState.gold
+	var spent: bool = GameState.try_spend_gold(50)
+	var pass_spend: bool = spent and GameState.gold == (start_gold - 50)
 
-	var fail_overspend := not GameState.try_spend_gold(10000)
+	var fail_overspend: bool = not GameState.try_spend_gold(10000)
 
 	GameState.add_gold(100)
-	var pass_add := (GameState.gold == (start_gold - 50 + 100))
+	var pass_add: bool = (GameState.gold == (start_gold - 50 + 100))
 
 	return { "name": "GameState Gold Economy", "passed": pass_spend and fail_overspend and pass_add }
 
@@ -40,10 +40,10 @@ static func _test_spend_add_gold() -> Dictionary:
 static func _test_damage_base_and_lose() -> Dictionary:
 	GameState.reset_run()
 	GameState.damage_base(5)
-	var pass_dmg := GameState.lives == (GameState.STARTING_LIVES - 5)
+	var pass_dmg: bool = GameState.lives == (GameState.STARTING_LIVES - 5)
 
 	GameState.damage_base(100)
-	var pass_lose := (GameState.lives == 0 and GameState.phase == GameState.Phase.LOST)
+	var pass_lose: bool = (GameState.lives == 0 and GameState.phase == GameState.Phase.LOST)
 
 	return { "name": "GameState Base Damage & Defeat Condition", "passed": pass_dmg and pass_lose }
 
@@ -51,9 +51,9 @@ static func _test_damage_base_and_lose() -> Dictionary:
 static func _test_placement_type_and_cost() -> Dictionary:
 	GameState.reset_run()
 	GameState.set_placement_type(&"archer")
-	var pass_archer := (GameState.get_current_placement_cost() == GameState.ARCHER_COST)
+	var pass_archer: bool = (GameState.get_current_placement_cost() == GameState.ARCHER_COST)
 
 	GameState.set_placement_type(&"frost")
-	var pass_frost := (GameState.get_current_placement_cost() == GameState.FROST_COST)
+	var pass_frost: bool = (GameState.get_current_placement_cost() == GameState.FROST_COST)
 
 	return { "name": "GameState Tower Selection & Costs", "passed": pass_archer and pass_frost }

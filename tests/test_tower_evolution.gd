@@ -15,16 +15,20 @@ static func run_all() -> Array[Dictionary]:
 
 static func _test_archer_evolution() -> Dictionary:
 	var tower: Node2D = ArcherScene.instantiate()
-	var base_dmg := tower.damage
+	var base_dmg: float = tower.get("damage")
 
 	# Force 1 evolution point
-	tower.feats.pending_evolution_points = 1
+	if tower.get("feats") != null:
+		tower.get("feats").pending_evolution_points = 1
 
-	var marksman_evo: EvolutionDef = tower.evolution_options[0] # Marksman
-	var applied := tower.apply_evolution(marksman_evo)
+	var options: Array = tower.get("evolution_options")
+	var marksman_evo: EvolutionDef = options[0] # Marksman
+	var applied: bool = tower.apply_evolution(marksman_evo)
 
-	var pass_applied := applied
-	var pass_stats := tower.damage > base_dmg and tower.applied_evolutions.has(&"marksman")
+	var pass_applied: bool = applied
+	var new_dmg: float = tower.get("damage")
+	var applied_evos: Array = tower.get("applied_evolutions")
+	var pass_stats: bool = new_dmg > base_dmg and applied_evos.has(&"marksman")
 
 	tower.free()
 	return { "name": "Archer Tower Marksman Evolution", "passed": pass_applied and pass_stats }
@@ -32,16 +36,20 @@ static func _test_archer_evolution() -> Dictionary:
 
 static func _test_frost_evolution() -> Dictionary:
 	var tower: Node2D = FrostScene.instantiate()
-	var base_slow := tower.slow_factor
+	var base_slow: float = tower.get("slow_factor")
 
 	# Force 1 evolution point
-	tower.feats.pending_evolution_points = 1
+	if tower.get("feats") != null:
+		tower.get("feats").pending_evolution_points = 1
 
-	var glacier_evo: EvolutionDef = tower.evolution_options[0] # Glacier
-	var applied := tower.apply_evolution(glacier_evo)
+	var options: Array = tower.get("evolution_options")
+	var glacier_evo: EvolutionDef = options[0] # Glacier
+	var applied: bool = tower.apply_evolution(glacier_evo)
 
-	var pass_applied := applied
-	var pass_slow := tower.slow_factor < base_slow and tower.applied_evolutions.has(&"glacier")
+	var pass_applied: bool = applied
+	var new_slow: float = tower.get("slow_factor")
+	var applied_evos: Array = tower.get("applied_evolutions")
+	var pass_slow: bool = new_slow < base_slow and applied_evos.has(&"glacier")
 
 	tower.free()
 	return { "name": "Frost Tower Glacier Evolution", "passed": pass_applied and pass_slow }
