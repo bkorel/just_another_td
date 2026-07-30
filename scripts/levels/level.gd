@@ -25,21 +25,23 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _placing and GameState.phase == GameState.Phase.BUILD:
+	var can_build := (GameState.phase == GameState.Phase.BUILD or GameState.phase == GameState.Phase.WAVE)
+	if _placing and can_build:
 		placement_ghost.visible = true
 		placement_ghost.global_position = get_global_mouse_position()
 		var valid := _can_place_at(placement_ghost.global_position)
 		if GameState.selected_placement_type == &"frost":
-			placement_ghost.color = Color(0.3, 0.8, 1.2, 0.4) if valid else Color(0.9, 0.3, 0.3, 0.35)
+			placement_ghost.color = Color(0.3, 0.8, 1.2, 0.45) if valid else Color(0.9, 0.3, 0.3, 0.35)
 		else:
-			placement_ghost.color = Color(0.4, 0.8, 0.5, 0.4) if valid else Color(0.9, 0.3, 0.3, 0.35)
+			placement_ghost.color = Color(0.4, 0.8, 0.5, 0.45) if valid else Color(0.9, 0.3, 0.3, 0.35)
 	else:
 		placement_ghost.visible = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if GameState.phase == GameState.Phase.EVOLUTION_PICK:
+	if GameState.phase == GameState.Phase.EVOLUTION_PICK or GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
 		return
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE:
 			wave_manager.start_next_wave()
@@ -64,7 +66,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _try_select_tower(pos):
 			get_viewport().set_input_as_handled()
 			return
-		if GameState.phase == GameState.Phase.BUILD and _try_place_tower(pos):
+
+		var can_build := (GameState.phase == GameState.Phase.BUILD or GameState.phase == GameState.Phase.WAVE)
+		if can_build and _try_place_tower(pos):
 			get_viewport().set_input_as_handled()
 
 
@@ -86,15 +90,23 @@ func _try_place_tower(pos: Vector2) -> bool:
 func _can_place_at(pos: Vector2) -> bool:
 	if path == null or path.curve == null:
 		return false
+
+	# Keep off path
 	var baked := path.curve.get_baked_points()
-	for p in baked:
-		if pos.distance_to(path.to_global(p)) < 42.0:
+	var step_size := 3
+	for i in range(0, baked.size(), step_size):
+		if pos.distance_to(path.to_global(baked[i])) < 38.0:
 			return false
+
+	# Keep away from existing towers
 	for tower in get_tree().get_nodes_in_group("towers"):
-		if pos.distance_to(tower.global_position) < 40.0:
+		if pos.distance_to(tower.global_position) < 36.0:
 			return false
-	if pos.x < 40 or pos.x > 1240 or pos.y < 40 or pos.y > 680:
+
+	# Field boundaries
+	if pos.x < 30 or pos.x > 1250 or pos.y < 30 or pos.y > 690:
 		return false
+
 	return true
 
 

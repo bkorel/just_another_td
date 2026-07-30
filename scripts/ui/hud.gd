@@ -2,6 +2,8 @@ extends CanvasLayer
 
 ## Top HUD + Build Palette + tower feat panel + evolution picker + banners.
 
+const TestRunnerScene := preload("res://scenes/tests/test_runner_scene.tscn")
+
 @onready var gold_label: Label = $Root/TopBar/GoldLabel
 @onready var lives_label: Label = $Root/TopBar/LivesLabel
 @onready var wave_label: Label = $Root/TopBar/WaveLabel
@@ -11,6 +13,7 @@ extends CanvasLayer
 @onready var archer_btn: Button = $Root/BuildPalette/ArcherBtn
 @onready var frost_btn: Button = $Root/BuildPalette/FrostBtn
 @onready var next_wave_btn: Button = $Root/BuildPalette/NextWaveBtn
+@onready var test_btn: Button = $Root/BuildPalette/TestBtn
 
 @onready var banner: PanelContainer = $Root/Banner
 @onready var banner_text: Label = $Root/Banner/BannerText
@@ -35,6 +38,7 @@ func _ready() -> void:
 	archer_btn.pressed.connect(func(): GameState.set_placement_type(&"archer"))
 	frost_btn.pressed.connect(func(): GameState.set_placement_type(&"frost"))
 	next_wave_btn.pressed.connect(_on_next_wave_pressed)
+	test_btn.pressed.connect(_on_test_pressed)
 
 	GameState.gold_changed.connect(_on_gold)
 	GameState.lives_changed.connect(_on_lives)
@@ -83,6 +87,15 @@ func open_evolution_modal(tower: Node) -> void:
 		btn.custom_minimum_size = Vector2(0, 42)
 		btn.pressed.connect(_on_pick_evolution.bind(evo))
 		evo_buttons.add_child(btn)
+
+
+func _on_test_pressed() -> void:
+	var existing = $Root.get_node_or_null("TestRunnerUI")
+	if existing:
+		existing.queue_free()
+		return
+	var test_ui = TestRunnerScene.instantiate()
+	$Root.add_child(test_ui)
 
 
 func _on_next_wave_pressed() -> void:

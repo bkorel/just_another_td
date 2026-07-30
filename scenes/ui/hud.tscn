@@ -39,26 +39,31 @@ offset_top = 12.0
 offset_right = -16.0
 offset_bottom = 48.0
 grow_horizontal = 2
+mouse_filter = 2
 theme_override_constants/separation = 24
 
 [node name="GoldLabel" type="Label" parent="Root/TopBar"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 18
 text = "Gold: 0"
 
 [node name="LivesLabel" type="Label" parent="Root/TopBar"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 18
 text = "Lives: 0"
 
 [node name="WaveLabel" type="Label" parent="Root/TopBar"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 18
 text = "Wave: 0"
 
 [node name="HintLabel" type="Label" parent="Root/TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 horizontal_alignment = 2
 text = "Hints"
 
@@ -74,6 +79,7 @@ offset_right = -16.0
 offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
 text = "Build towers, then press Space to start a wave."
 
 [node name="BuildPalette" type="HBoxContainer" parent="Root"]
@@ -83,9 +89,10 @@ anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
 offset_top = -90.0
-offset_right = 380.0
+offset_right = 480.0
 offset_bottom = -42.0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="ArcherBtn" type="Button" parent="Root/BuildPalette"]
@@ -103,6 +110,11 @@ custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Start Wave [Space]"
 
+[node name="TestBtn" type="Button" parent="Root/BuildPalette"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "🧪 Tests"
+
 [node name="Banner" type="PanelContainer" parent="Root"]
 visible = false
 layout_mode = 1
@@ -114,10 +126,12 @@ offset_top = 56.0
 offset_right = 220.0
 offset_bottom = 104.0
 grow_horizontal = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="BannerText" type="Label" parent="Root/Banner"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
 theme_override_font_sizes/font_size = 18
 text = "✨ FEAT UNLOCKED! ✨"
@@ -137,6 +151,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Margin" type="MarginContainer" parent="Root/TowerPanel"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
@@ -144,19 +159,23 @@ theme_override_constants/margin_bottom = 8
 
 [node name="VBox" type="VBoxContainer" parent="Root/TowerPanel/Margin"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 8
 
 [node name="TowerTitle" type="Label" parent="Root/TowerPanel/Margin/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 20
 text = "Tower"
 
 [node name="EvoPoints" type="Label" parent="Root/TowerPanel/Margin/VBox"]
 layout_mode = 2
+mouse_filter = 2
 text = "Evolution points: 0"
 
 [node name="FeatList" type="VBoxContainer" parent="Root/TowerPanel/Margin/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 4
 
 [node name="EvolutionModal" type="PanelContainer" parent="Root"]
@@ -177,6 +196,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Margin" type="MarginContainer" parent="Root/EvolutionModal"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 16
@@ -184,16 +204,19 @@ theme_override_constants/margin_bottom = 16
 
 [node name="VBox" type="VBoxContainer" parent="Root/EvolutionModal/Margin"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="Root/EvolutionModal/Margin/VBox"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 22
 text = "Choose evolution"
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="Root/EvolutionModal/Margin/VBox"]
 layout_mode = 2
+mouse_filter = 2
 text = "A feat unlocked an evolution point. Pick a branch."
 horizontal_alignment = 1
 autowrap_mode = 3
