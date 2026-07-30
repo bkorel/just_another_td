@@ -1,3 +1,4 @@
+class_name GameCamera
 extends Camera2D
 
 ## Camera with smooth screen shake support.

@@ -91,7 +91,7 @@ func _process(delta: float) -> void:
 		leaked.emit(self)
 		var dmg := 1 if not is_elite else 3
 		GameState.damage_base(dmg)
-		Camera2D.shake(6.0)
+		GameCamera.shake(6.0)
 		queue_free()
 
 
@@ -134,7 +134,7 @@ func _die() -> void:
 	ImpactVFXScene.spawn(get_parent(), global_position, _base_color, 16)
 
 	if is_elite:
-		Camera2D.shake(8.0)
+		GameCamera.shake(8.0)
 
 	if last_hit_tower and last_hit_tower.has_method("register_kill"):
 		last_hit_tower.register_kill(self)

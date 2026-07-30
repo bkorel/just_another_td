@@ -1,3 +1,4 @@
+class_name FloatingText
 extends Node2D
 
 ## Floating text for damage numbers and notifications.
