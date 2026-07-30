@@ -16,6 +16,7 @@ const TOWER_SPACING := 36.0
 
 var _placing: bool = true
 var _mouse_was_down: bool = false
+var _last_click_frame: int = -1
 
 
 func _ready() -> void:
@@ -48,8 +49,13 @@ func _process(_delta: float) -> void:
 	# CanvasLayer controls and the world Node2D.
 	var mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if mouse_down and not _mouse_was_down:
-		_handle_polled_map_click()
+		_handle_map_click_from_screen(get_viewport().get_mouse_position())
 	_mouse_was_down = mouse_down
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_handle_map_click_from_screen(event.position)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -73,15 +79,18 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-func _handle_polled_map_click() -> void:
-	if not _can_build_now():
+func _handle_map_click_from_screen(screen_pos: Vector2) -> void:
+	# Both _input and polling can see one physical click. Process it only once.
+	var frame := Engine.get_process_frames()
+	if _last_click_frame == frame:
 		return
+	_last_click_frame = frame
 
-	var screen_pos := get_viewport().get_mouse_position()
 	if _is_over_interactive_ui(screen_pos):
 		return
 
-	handle_map_click(get_global_mouse_position())
+	var world_pos := get_global_transform_with_canvas().affine_inverse() * screen_pos
+	handle_map_click(world_pos)
 
 
 func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
@@ -104,6 +113,7 @@ func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
 ## Called by HUD MapClickCatcher with world coordinates.
 func handle_map_click(world_pos: Vector2) -> void:
 	if GameState.phase == GameState.Phase.EVOLUTION_PICK or GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
+		hud.show_status("Cannot build: game is not active.")
 		return
 
 	if _try_select_tower(world_pos):
@@ -113,6 +123,7 @@ func handle_map_click(world_pos: Vector2) -> void:
 		hud.show_status("Cannot build right now (phase: %s)." % str(GameState.phase))
 		return
 
+	hud.show_status("Map click at (%.0f, %.0f)." % [world_pos.x, world_pos.y])
 	try_place_tower(world_pos)
 
 
