@@ -16,7 +16,7 @@ const TOWER_SPACING := 36.0
 
 var _placing: bool = true
 var _mouse_was_down: bool = false
-var _last_click_frame: int = -1
+var _ignore_click_until_ms: int = 0
 
 
 func _ready() -> void:
@@ -29,7 +29,7 @@ func _ready() -> void:
 	GameState.placement_type_changed.connect(_on_placement_type_changed)
 	_update_ghost()
 	_spawn_ambient_particles()
-	hud.show_status("Click the map to place a tower. Green ghost = valid spot.")
+	hud.show_status("Green ghost = can build. Left-click to place.")
 
 
 func _process(_delta: float) -> void:
@@ -45,21 +45,14 @@ func _process(_delta: float) -> void:
 	else:
 		placement_ghost.visible = false
 
-	# Input polling deliberately avoids GUI event propagation issues between
-	# CanvasLayer controls and the world Node2D.
+	# Single reliable click path: poll mouse button edge.
 	var mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if mouse_down and not _mouse_was_down:
-		_handle_map_click_from_screen(get_viewport().get_mouse_position())
+		_on_primary_click()
 	_mouse_was_down = mouse_down
 
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_handle_map_click_from_screen(event.position)
-
-
 func _unhandled_input(event: InputEvent) -> void:
-	# Keyboard only here; map clicks come from HUD MapClickCatcher.
 	if GameState.phase == GameState.Phase.EVOLUTION_PICK or GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
 		return
 
@@ -79,22 +72,21 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 
 
-func _handle_map_click_from_screen(screen_pos: Vector2) -> void:
-	# Both _input and polling can see one physical click. Process it only once.
-	var frame := Engine.get_process_frames()
-	if _last_click_frame == frame:
+func _on_primary_click() -> void:
+	var now_ms := Time.get_ticks_msec()
+	if now_ms < _ignore_click_until_ms:
 		return
-	_last_click_frame = frame
 
+	var screen_pos := get_viewport().get_mouse_position()
 	if _is_over_interactive_ui(screen_pos):
 		return
 
-	var world_pos := get_global_transform_with_canvas().affine_inverse() * screen_pos
+	# CRITICAL: use the exact same world position as the green ghost.
+	var world_pos := get_global_mouse_position()
 	handle_map_click(world_pos)
 
 
 func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
-	# These are the only clickable HUD regions. The rest of the screen is map.
 	var build_palette := hud.get_node_or_null("Root/BuildPalette") as Control
 	if build_palette != null and build_palette.get_global_rect().has_point(screen_pos):
 		return true
@@ -107,15 +99,19 @@ func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
 	if evolution_modal != null and evolution_modal.visible and evolution_modal.get_global_rect().has_point(screen_pos):
 		return true
 
+	var test_ui := hud.get_node_or_null("Root/TestRunnerUI") as Control
+	if test_ui != null and test_ui.visible and test_ui.get_global_rect().has_point(screen_pos):
+		return true
+
 	return false
 
 
-## Called by HUD MapClickCatcher with world coordinates.
 func handle_map_click(world_pos: Vector2) -> void:
 	if GameState.phase == GameState.Phase.EVOLUTION_PICK or GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
 		hud.show_status("Cannot build: game is not active.")
 		return
 
+	# Prefer selecting an existing tower only if the click is really on it.
 	if _try_select_tower(world_pos):
 		return
 
@@ -123,7 +119,6 @@ func handle_map_click(world_pos: Vector2) -> void:
 		hud.show_status("Cannot build right now (phase: %s)." % str(GameState.phase))
 		return
 
-	hud.show_status("Map click at (%.0f, %.0f)." % [world_pos.x, world_pos.y])
 	try_place_tower(world_pos)
 
 
@@ -143,19 +138,24 @@ func try_place_tower(pos: Vector2) -> bool:
 		hud.show_status("ERROR: failed to instantiate tower scene.")
 		return false
 
-	# Spend only after we know spawn will work.
 	if not GameState.try_spend_gold(cost):
 		tower.free()
 		hud.show_status("Need $%d (have $%d)." % [cost, GameState.gold])
 		return false
 
+	# Add first, then set transform in parent space.
 	towers_root.add_child(tower)
 	tower.global_position = pos
 	if tower.has_signal("clicked"):
 		tower.clicked.connect(_select_tower)
 
 	var tower_name: String = str(tower.get("display_name")) if "display_name" in tower else "Tower"
-	hud.show_status("Built %s for $%d." % [tower_name, cost])
+	var count := get_tree().get_nodes_in_group("towers").size()
+	hud.show_status("Built %s at (%.0f, %.0f). Towers: %d. Gold: %d" % [tower_name, pos.x, pos.y, count, GameState.gold])
+
+	# Select so range ring + side panel confirm the tower exists.
+	_select_tower(tower)
+	_ignore_click_until_ms = Time.get_ticks_msec() + 180
 	return true
 
 
@@ -166,7 +166,6 @@ func can_place_at(pos: Vector2) -> bool:
 	if path == null or path.curve == null:
 		return false
 
-	# Distance to nearest point on the path curve (local space).
 	var local_pos := path.to_local(pos)
 	var closest := path.curve.get_closest_point(local_pos)
 	if local_pos.distance_to(closest) < PATH_CLEARANCE:
@@ -190,7 +189,6 @@ func _try_select_tower(pos: Vector2) -> bool:
 		if is_instance_valid(tower) and tower.has_method("try_select_at") and tower.try_select_at(pos):
 			_select_tower(tower)
 			return true
-	_deselect()
 	return false
 
 

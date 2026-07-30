@@ -194,24 +194,37 @@ func _feat(id: StringName, title: String, desc: String, target: float) -> FeatDe
 
 
 func _build_visuals() -> void:
+	# Bright body so towers are obvious on the dark map.
 	_body = Polygon2D.new()
 	_body.polygon = PackedVector2Array([
-		Vector2(0, -18), Vector2(16, 10), Vector2(0, 6), Vector2(-16, 10)
+		Vector2(0, -22), Vector2(18, 12), Vector2(0, 6), Vector2(-18, 12)
 	])
-	_body.color = Color(0.35, 0.55, 0.4)
+	_body.color = Color(1.1, 0.85, 0.25)
+	_body.z_index = 5
 	add_child(_body)
+
+	var outline := Line2D.new()
+	outline.width = 2.5
+	outline.default_color = Color(0.05, 0.05, 0.05, 1)
+	outline.points = PackedVector2Array([
+		Vector2(0, -22), Vector2(18, 12), Vector2(0, 6), Vector2(-18, 12), Vector2(0, -22)
+	])
+	outline.z_index = 6
+	add_child(outline)
 
 	var core := Polygon2D.new()
 	core.polygon = PackedVector2Array([
-		Vector2(-5, -5), Vector2(5, -5), Vector2(5, 5), Vector2(-5, 5)
+		Vector2(-6, -6), Vector2(6, -6), Vector2(6, 6), Vector2(-6, 6)
 	])
-	core.color = Color(0.85, 0.9, 0.55)
+	core.color = Color(1.4, 1.2, 0.4)
+	core.z_index = 7
 	add_child(core)
 
 	_range_visual = Line2D.new()
-	_range_visual.width = 1.5
-	_range_visual.default_color = Color(0.6, 0.9, 0.7, 0.35)
+	_range_visual.width = 2.0
+	_range_visual.default_color = Color(1.0, 0.9, 0.3, 0.55)
 	_range_visual.visible = false
+	_range_visual.z_index = 4
 	add_child(_range_visual)
 	_rebuild_range_visual()
 

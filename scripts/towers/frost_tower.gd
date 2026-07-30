@@ -209,22 +209,34 @@ func _feat(id: StringName, title: String, desc: String, target: float) -> FeatDe
 func _build_visuals() -> void:
 	_body = Polygon2D.new()
 	_body.polygon = PackedVector2Array([
-		Vector2(-14, 14), Vector2(14, 14), Vector2(10, -8), Vector2(-10, -8)
+		Vector2(-16, 16), Vector2(16, 16), Vector2(12, -10), Vector2(-12, -10)
 	])
-	_body.color = Color(0.2, 0.35, 0.5)
+	_body.color = Color(0.25, 0.45, 0.75)
+	_body.z_index = 5
 	add_child(_body)
+
+	var outline := Line2D.new()
+	outline.width = 2.5
+	outline.default_color = Color(0.05, 0.05, 0.05, 1)
+	outline.points = PackedVector2Array([
+		Vector2(-16, 16), Vector2(16, 16), Vector2(12, -10), Vector2(-12, -10), Vector2(-16, 16)
+	])
+	outline.z_index = 6
+	add_child(outline)
 
 	_crystal = Polygon2D.new()
 	_crystal.polygon = PackedVector2Array([
-		Vector2(0, -16), Vector2(8, -2), Vector2(0, 8), Vector2(-8, -2)
+		Vector2(0, -18), Vector2(10, -2), Vector2(0, 10), Vector2(-10, -2)
 	])
-	_crystal.color = Color(0.4, 0.85, 1.2)
+	_crystal.color = Color(0.55, 1.2, 1.5)
+	_crystal.z_index = 7
 	add_child(_crystal)
 
 	_range_visual = Line2D.new()
-	_range_visual.width = 1.5
-	_range_visual.default_color = Color(0.4, 0.8, 1.0, 0.4)
+	_range_visual.width = 2.0
+	_range_visual.default_color = Color(0.4, 0.9, 1.2, 0.55)
 	_range_visual.visible = false
+	_range_visual.z_index = 4
 	add_child(_range_visual)
 	_rebuild_range_visual()
 
