@@ -17,12 +17,22 @@ var _wave_kills: Dictionary = {} # tower instance_id -> count
 
 
 func can_start_wave() -> bool:
-	return not _spawning and _alive == 0 and GameState.phase == GameState.Phase.BUILD and GameState.wave_index < max_waves
+	return not _spawning and _alive == 0 and GameState.wave_index < max_waves and (
+		GameState.phase == GameState.Phase.BUILD
+		or GameState.phase == GameState.Phase.EVOLUTION_PICK
+	)
 
 
 func start_next_wave() -> void:
-	if not can_start_wave():
+	if _spawning or _alive > 0:
 		return
+	if GameState.wave_index >= max_waves:
+		return
+	# Allow start even if phase got stuck; snap back to WAVE.
+	if GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
+		return
+	if GameState.phase == GameState.Phase.EVOLUTION_PICK:
+		GameState.phase = GameState.Phase.BUILD
 	GameState.phase = GameState.Phase.WAVE
 	GameState.set_wave(GameState.wave_index + 1)
 	_wave_kills.clear()

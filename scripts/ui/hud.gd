@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-## HUD: build palette, feat panel, evolution modal, and map click catcher.
+## HUD: build palette, feat panel, evolution modal.
 
 const TestRunnerScene := preload("res://scenes/tests/test_runner_scene.tscn")
 
@@ -9,7 +9,6 @@ const TestRunnerScene := preload("res://scenes/tests/test_runner_scene.tscn")
 @onready var wave_label: Label = $Root/TopBar/WaveLabel
 @onready var hint_label: Label = $Root/TopBar/HintLabel
 @onready var status_label: Label = $Root/StatusLabel
-@onready var map_click: Control = $Root/MapClickCatcher
 
 @onready var archer_btn: Button = $Root/BuildPalette/ArcherBtn
 @onready var frost_btn: Button = $Root/BuildPalette/FrostBtn
@@ -36,19 +35,13 @@ func _ready() -> void:
 	evolution_modal.visible = false
 	banner.visible = false
 
-	# Placement is polled by Level to avoid GUI propagation conflicts. This
-	# control is visual-only and must not consume map clicks.
-	map_click.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	map_click.z_index = -1
-	$Root/BuildPalette.z_index = 2
-	$Root/TopBar.z_index = 2
-	$Root/TowerPanel.z_index = 3
-	$Root/EvolutionModal.z_index = 4
-	$Root/Banner.z_index = 3
-	test_btn.z_index = 2
+	# Ensure buttons receive clicks.
+	for btn in [archer_btn, frost_btn, next_wave_btn, test_btn]:
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
-	archer_btn.pressed.connect(func(): GameState.set_placement_type(&"archer"))
-	frost_btn.pressed.connect(func(): GameState.set_placement_type(&"frost"))
+	archer_btn.pressed.connect(_on_archer_pressed)
+	frost_btn.pressed.connect(_on_frost_pressed)
 	next_wave_btn.pressed.connect(_on_next_wave_pressed)
 	test_btn.pressed.connect(_on_test_pressed)
 
@@ -67,7 +60,7 @@ func _ready() -> void:
 	_on_wave(GameState.wave_index)
 	_on_placement_type_changed(GameState.selected_placement_type)
 
-	hint_label.text = "[1] Archer · [2] Frost · [Space] Wave · Click map to build"
+	hint_label.text = "[1]/[2] towers · [Space]/[B] build · Click map"
 
 
 func bind_level(level: Node) -> void:
@@ -77,6 +70,20 @@ func bind_level(level: Node) -> void:
 func show_status(msg: String) -> void:
 	if status_label != null:
 		status_label.text = msg
+
+
+func request_start_wave() -> void:
+	_on_next_wave_pressed()
+
+
+func _on_archer_pressed() -> void:
+	GameState.set_placement_type(&"archer")
+	show_status("Selected Archer ($50). Click map to place.")
+
+
+func _on_frost_pressed() -> void:
+	GameState.set_placement_type(&"frost")
+	show_status("Selected Frost ($60). Click map to place.")
 
 
 func show_tower(tower: Node) -> void:
@@ -102,6 +109,7 @@ func open_evolution_modal(tower: Node) -> void:
 		var btn := Button.new()
 		btn.text = "%s — %s" % [evo.title, evo.description]
 		btn.custom_minimum_size = Vector2(0, 42)
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 		btn.pressed.connect(_on_pick_evolution.bind(evo))
 		evo_buttons.add_child(btn)
 
@@ -116,19 +124,35 @@ func _on_test_pressed() -> void:
 
 
 func _on_next_wave_pressed() -> void:
-	if _level and _level.has_node("WaveManager"):
-		var wm = _level.get_node("WaveManager")
-		if wm.can_start_wave():
-			if GameState.phase == GameState.Phase.BUILD and GameState.wave_index > 0:
-				GameState.add_gold(15)
-				status_label.text = "Early Wave Call! +15 Gold Bonus!"
-			wm.start_next_wave()
+	if _level == null:
+		show_status("ERROR: level not bound to HUD.")
+		return
+	if not _level.has_node("WaveManager"):
+		show_status("ERROR: WaveManager missing.")
+		return
+
+	var wm: Node = _level.get_node("WaveManager")
+	if not wm.can_start_wave():
+		show_status("Cannot start wave (phase=%s, wave=%d)." % [str(GameState.phase), GameState.wave_index])
+		# If stuck in a weird phase, force back to BUILD between waves.
+		if GameState.phase != GameState.Phase.WAVE and GameState.phase != GameState.Phase.WON and GameState.phase != GameState.Phase.LOST:
+			GameState.phase = GameState.Phase.BUILD
+			if wm.can_start_wave():
+				wm.start_next_wave()
+				show_status("Wave %d started!" % GameState.wave_index)
+		return
+
+	if GameState.phase == GameState.Phase.BUILD and GameState.wave_index > 0:
+		GameState.add_gold(15)
+		show_status("Early Wave Call! +15 Gold. Wave starting...")
+	wm.start_next_wave()
+	show_status("Wave %d started!" % GameState.wave_index)
 
 
 func _on_pick_evolution(evo: Resource) -> void:
 	if _evo_tower and _evo_tower.has_method("apply_evolution"):
 		_evo_tower.apply_evolution(evo)
-		show_banner("⚡ EVOLUTION UNLOCKED: %s!" % evo.title)
+		show_banner("EVOLUTION: %s!" % evo.title)
 	evolution_modal.visible = false
 	_evo_tower = null
 
@@ -159,7 +183,7 @@ func _refresh_feats(tower: Node) -> void:
 		var row := Label.new()
 		var cur := int(item["current"])
 		var tgt := int(item["target"])
-		var mark := "✓" if item["done"] else "%d/%d" % [cur, tgt]
+		var mark := "OK" if item["done"] else "%d/%d" % [cur, tgt]
 		row.text = "%s  %s — %s" % [mark, item["title"], item["description"]]
 		if item["done"]:
 			row.modulate = Color(0.5, 1.0, 0.6)
@@ -197,7 +221,7 @@ func _on_tower_selected(tower: Node) -> void:
 
 func _on_feat_completed(tower: Node, feat_id: StringName) -> void:
 	var title: String = str(feat_id)
-	status_label.text = "✨ FEAT COMPLETED: %s!" % title
-	show_banner("✨ FEAT UNLOCKED: %s!" % title)
+	status_label.text = "FEAT COMPLETED: %s!" % title
+	show_banner("FEAT UNLOCKED: %s!" % title)
 	if tower == GameState.selected_tower:
 		_refresh_feats(tower)

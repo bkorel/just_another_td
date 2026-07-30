@@ -19,6 +19,7 @@ content_margin_right = 10.0
 content_margin_bottom = 8.0
 
 [node name="HUD" type="CanvasLayer"]
+layer = 10
 script = ExtResource("1_hud")
 
 [node name="Root" type="Control" parent="."]
@@ -29,15 +30,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="MapClickCatcher" type="Control" parent="Root"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 0
 
 [node name="TopBar" type="HBoxContainer" parent="Root"]
 layout_mode = 1
@@ -83,49 +75,56 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -32.0
+offset_top = -36.0
 offset_right = -16.0
 offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
-text = "Build towers, then press Space to start a wave."
+theme_override_font_sizes/font_size = 16
+text = "Build towers, then press Space / Start Wave."
 
 [node name="BuildPalette" type="HBoxContainer" parent="Root"]
+z_index = 20
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -90.0
-offset_right = 480.0
-offset_bottom = -42.0
+offset_top = -100.0
+offset_right = 520.0
+offset_bottom = -44.0
 grow_vertical = 0
 mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="ArcherBtn" type="Button" parent="Root/BuildPalette"]
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(120, 44)
 layout_mode = 2
+mouse_filter = 0
 text = "Archer ($50) [1]"
 
 [node name="FrostBtn" type="Button" parent="Root/BuildPalette"]
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(120, 44)
 layout_mode = 2
+mouse_filter = 0
 text = "Frost ($60) [2]"
 
 [node name="NextWaveBtn" type="Button" parent="Root/BuildPalette"]
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(150, 44)
 layout_mode = 2
+mouse_filter = 0
 text = "Start Wave [Space]"
 
 [node name="TestBtn" type="Button" parent="Root/BuildPalette"]
-custom_minimum_size = Vector2(80, 0)
+custom_minimum_size = Vector2(90, 44)
 layout_mode = 2
-text = "🧪 Tests"
+mouse_filter = 0
+text = "Tests"
 
 [node name="Banner" type="PanelContainer" parent="Root"]
 visible = false
+z_index = 30
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -143,10 +142,12 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
 theme_override_font_sizes/font_size = 18
-text = "✨ FEAT UNLOCKED! ✨"
+text = "FEAT UNLOCKED!"
 horizontal_alignment = 1
 
 [node name="TowerPanel" type="PanelContainer" parent="Root"]
+visible = false
+z_index = 15
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -156,6 +157,7 @@ offset_top = 64.0
 offset_right = -16.0
 offset_bottom = 420.0
 grow_horizontal = 0
+mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Margin" type="MarginContainer" parent="Root/TowerPanel"]
@@ -189,6 +191,7 @@ theme_override_constants/separation = 4
 
 [node name="EvolutionModal" type="PanelContainer" parent="Root"]
 visible = false
+z_index = 40
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -201,6 +204,7 @@ offset_right = 280.0
 offset_bottom = 160.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Margin" type="MarginContainer" parent="Root/EvolutionModal"]

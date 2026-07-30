@@ -74,7 +74,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE:
-				wave_manager.start_next_wave()
+				if hud.has_method("request_start_wave"):
+					hud.request_start_wave()
+				else:
+					wave_manager.start_next_wave()
 				get_viewport().set_input_as_handled()
 			KEY_ESCAPE:
 				_deselect()
@@ -86,29 +89,40 @@ func _unhandled_input(event: InputEvent) -> void:
 				GameState.set_placement_type(&"frost")
 				get_viewport().set_input_as_handled()
 			KEY_B:
-				# Emergency build at mouse — always attempts place.
 				try_place_tower(get_global_mouse_position())
 				get_viewport().set_input_as_handled()
 
 
 func _on_primary_click() -> void:
-	var screen_pos := get_viewport().get_mouse_position()
-	if _is_over_interactive_ui(screen_pos):
+	# If the cursor is over any real UI control (buttons/panels), let the GUI handle it.
+	var hovered := get_viewport().gui_get_hovered_control()
+	if hovered != null and _is_interactive_control(hovered):
 		return
 	handle_map_click(get_global_mouse_position())
 
 
-func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
-	for path_str in ["Root/BuildPalette", "Root/TowerPanel", "Root/EvolutionModal", "Root/TestRunnerUI"]:
-		var ctrl := hud.get_node_or_null(path_str) as Control
-		if ctrl != null and ctrl.visible and ctrl.get_global_rect().has_point(screen_pos):
-			# BuildPalette is always visible; only treat as UI if over an actual button.
-			if path_str == "Root/BuildPalette":
-				for child in ctrl.get_children():
-					if child is Control and (child as Control).get_global_rect().has_point(screen_pos):
-						return true
-				return false
+func _is_interactive_control(ctrl: Control) -> bool:
+	# Ignore labels/containers that pass mouse through; react only to clickable UI.
+	if ctrl is BaseButton:
+		return true
+	if ctrl == null:
+		return false
+	# Walk up: if any ancestor is a button or visible modal/panel that stops mouse.
+	var node: Node = ctrl
+	while node != null:
+		if node is BaseButton:
 			return true
+		if node is PanelContainer and (node as Control).visible and (node as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
+			return true
+		node = node.get_parent()
+	return false
+
+
+func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
+	# Kept for compatibility; prefer gui_get_hovered_control path.
+	var hovered := get_viewport().gui_get_hovered_control()
+	if hovered != null:
+		return _is_interactive_control(hovered)
 	return false
 
 
