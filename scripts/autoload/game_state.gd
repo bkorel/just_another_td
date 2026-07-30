@@ -1,6 +1,6 @@
 extends Node
 
-## Global run state: lives, gold, phase, tower placement selection.
+## Global run state: lives, gold, phase, tower placement selection, camera references.
 
 signal gold_changed(amount: int)
 signal lives_changed(amount: int)
@@ -20,6 +20,7 @@ var lives: int = 20
 var wave_index: int = 0
 var selected_tower: Node = null
 var selected_placement_type: StringName = &"archer"
+var main_camera: Camera2D = null
 
 const ARCHER_COST := 50
 const FROST_COST := 60
@@ -43,6 +44,11 @@ func reset_run() -> void:
 	wave_changed.emit(wave_index)
 	tower_selected.emit(null)
 	placement_type_changed.emit(selected_placement_type)
+
+
+func shake_camera(amount: float = 8.0) -> void:
+	if main_camera and main_camera.has_method("add_shake"):
+		main_camera.add_shake(amount)
 
 
 func set_placement_type(type_id: StringName) -> void:

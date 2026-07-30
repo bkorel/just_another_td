@@ -69,7 +69,7 @@ func _hit_target() -> void:
 		ImpactVFXScene.spawn(get_parent(), global_position, _color, 12)
 
 		if damage > 25.0:
-			GameCamera.shake(3.0)
+			GameState.shake_camera(3.0)
 
 	queue_free()
 

@@ -7,6 +7,9 @@ signal leaked(enemy: Node)
 
 enum Type { BASIC, RUNNER, TANK, ELITE }
 
+const ImpactVFXScene = preload("res://scenes/vfx/impact_vfx.tscn")
+const FloatingTextScene = preload("res://scenes/vfx/floating_text.tscn")
+
 @export var enemy_type: Type = Type.BASIC
 @export var max_hp: float = 40.0
 @export var move_speed: float = 80.0
@@ -91,7 +94,7 @@ func _process(delta: float) -> void:
 		leaked.emit(self)
 		var dmg := 1 if not is_elite else 3
 		GameState.damage_base(dmg)
-		GameCamera.shake(6.0)
+		GameState.shake_camera(6.0)
 		queue_free()
 
 
@@ -114,7 +117,7 @@ func apply_damage(amount: float, source_tower: Node = null) -> void:
 	# Floating damage number
 	var is_crit := final_damage > 25.0
 	var text_color := Color(0.4, 0.8, 1.0) if slow_timer > 0.0 else (Color(1.0, 0.85, 0.3) if is_crit else Color.WHITE)
-	FloatingText.spawn_damage(get_parent(), global_position, final_damage, text_color, is_crit)
+	_spawn_floating_text(final_damage, text_color, is_crit)
 
 	# Hit Flash effect
 	_trigger_hit_flash()
@@ -127,6 +130,16 @@ func apply_damage(amount: float, source_tower: Node = null) -> void:
 		_die()
 
 
+func _spawn_floating_text(amount: float, color: Color, is_crit: bool) -> void:
+	if FloatingTextScene == null or get_parent() == null:
+		return
+	var ft: Node2D = FloatingTextScene.instantiate()
+	ft.global_position = global_position + Vector2(randf_range(-8, 8), randf_range(-8, 0))
+	get_parent().add_child(ft)
+	if ft.has_method("setup_damage"):
+		ft.setup_damage(amount, color, is_crit)
+
+
 func _die() -> void:
 	GameState.add_gold(gold_reward)
 
@@ -134,7 +147,7 @@ func _die() -> void:
 	ImpactVFXScene.spawn(get_parent(), global_position, _base_color, 16)
 
 	if is_elite:
-		GameCamera.shake(8.0)
+		GameState.shake_camera(8.0)
 
 	if last_hit_tower and last_hit_tower.has_method("register_kill"):
 		last_hit_tower.register_kill(self)
@@ -203,7 +216,3 @@ func _update_hp_bar() -> void:
 	_bar_fg.polygon = PackedVector2Array([
 		Vector2(-14, -22), Vector2(-14 + w, -22), Vector2(-14 + w, -18), Vector2(-14, -18)
 	])
-
-
-# Helper reference to impact VFX loader
-const ImpactVFXScene = preload("res://scenes/vfx/impact_vfx.tscn")

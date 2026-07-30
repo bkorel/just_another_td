@@ -1,16 +1,17 @@
-class_name GameCamera
 extends Camera2D
 
 ## Camera with smooth screen shake support.
-
-static var instance: Camera2D = null
 
 var _shake_amount: float = 0.0
 var _shake_decay: float = 5.0
 
 
 func _ready() -> void:
-	instance = self
+	GameState.main_camera = self
+
+
+func add_shake(amount: float = 8.0) -> void:
+	_shake_amount = maxf(_shake_amount, amount)
 
 
 func _process(delta: float) -> void:
@@ -22,8 +23,3 @@ func _process(delta: float) -> void:
 		)
 	else:
 		offset = Vector2.ZERO
-
-
-static func shake(amount: float = 8.0) -> void:
-	if instance != null:
-		instance._shake_amount = maxf(instance._shake_amount, amount)
