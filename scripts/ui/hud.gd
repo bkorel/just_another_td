@@ -88,7 +88,7 @@ func _on_map_gui_input(event: InputEvent) -> void:
 		var world_pos := _screen_to_world(event.position)
 		if _level.has_method("handle_map_click"):
 			_level.handle_map_click(world_pos)
-		accept_event()
+		map_click.accept_event()
 
 
 func _screen_to_world(screen_pos: Vector2) -> Vector2:
