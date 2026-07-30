@@ -5,6 +5,7 @@ extends PanelContainer
 const TestGameState = preload("res://tests/test_game_state.gd")
 const TestFeatTracker = preload("res://tests/test_feat_tracker.gd")
 const TestTowerEvolution = preload("res://tests/test_tower_evolution.gd")
+const TestPlacement = preload("res://tests/test_placement.gd")
 
 @onready var test_list: VBoxContainer = $Margin/VBox/Scroll/TestList
 @onready var summary_label: Label = $Margin/VBox/SummaryLabel
@@ -27,7 +28,8 @@ func run_tests() -> void:
 	var suites := [
 		TestGameState.run_all(),
 		TestFeatTracker.run_all(),
-		TestTowerEvolution.run_all()
+		TestTowerEvolution.run_all(),
+		TestPlacement.run_all()
 	]
 
 	for suite in suites:

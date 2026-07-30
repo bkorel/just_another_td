@@ -6,11 +6,12 @@ extends SceneTree
 const TestGameState = preload("res://tests/test_game_state.gd")
 const TestFeatTracker = preload("res://tests/test_feat_tracker.gd")
 const TestTowerEvolution = preload("res://tests/test_tower_evolution.gd")
+const TestPlacement = preload("res://tests/test_placement.gd")
 
 
 func _init() -> void:
 	print("\n==========================================")
-	print("🧪 RUNNING JUST ANOTHER TD UNIT TESTS")
+	print("RUNNING JUST ANOTHER TD UNIT TESTS")
 	print("==========================================\n")
 
 	var total := 0
@@ -20,7 +21,8 @@ func _init() -> void:
 	var suites := [
 		TestGameState.run_all(),
 		TestFeatTracker.run_all(),
-		TestTowerEvolution.run_all()
+		TestTowerEvolution.run_all(),
+		TestPlacement.run_all()
 	]
 
 	for suite in suites:

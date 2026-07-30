@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-## Top HUD + Build Palette + tower feat panel + evolution picker + banners.
+## HUD: build palette, feat panel, evolution modal, and map click catcher.
 
 const TestRunnerScene := preload("res://scenes/tests/test_runner_scene.tscn")
 
@@ -9,6 +9,7 @@ const TestRunnerScene := preload("res://scenes/tests/test_runner_scene.tscn")
 @onready var wave_label: Label = $Root/TopBar/WaveLabel
 @onready var hint_label: Label = $Root/TopBar/HintLabel
 @onready var status_label: Label = $Root/StatusLabel
+@onready var map_click: Control = $Root/MapClickCatcher
 
 @onready var archer_btn: Button = $Root/BuildPalette/ArcherBtn
 @onready var frost_btn: Button = $Root/BuildPalette/FrostBtn
@@ -35,6 +36,17 @@ func _ready() -> void:
 	evolution_modal.visible = false
 	banner.visible = false
 
+	# MapCatcher receives all map clicks; buttons above it still work (drawn later).
+	map_click.gui_input.connect(_on_map_gui_input)
+	map_click.mouse_filter = Control.MOUSE_FILTER_STOP
+	map_click.z_index = -1
+	$Root/BuildPalette.z_index = 2
+	$Root/TopBar.z_index = 2
+	$Root/TowerPanel.z_index = 3
+	$Root/EvolutionModal.z_index = 4
+	$Root/Banner.z_index = 3
+	test_btn.z_index = 2
+
 	archer_btn.pressed.connect(func(): GameState.set_placement_type(&"archer"))
 	frost_btn.pressed.connect(func(): GameState.set_placement_type(&"frost"))
 	next_wave_btn.pressed.connect(_on_next_wave_pressed)
@@ -55,7 +67,7 @@ func _ready() -> void:
 	_on_wave(GameState.wave_index)
 	_on_placement_type_changed(GameState.selected_placement_type)
 
-	hint_label.text = "[1] Archer · [2] Frost · [Space] Wave · [Esc] Deselect"
+	hint_label.text = "[1] Archer · [2] Frost · [Space] Wave · Click map to build"
 
 
 func bind_level(level: Node) -> void:
@@ -67,23 +79,24 @@ func show_status(msg: String) -> void:
 		status_label.text = msg
 
 
-func is_position_over_gui(screen_pos: Vector2) -> bool:
-	var active_controls: Array[Control] = [
-		$Root/TopBar,
-		$Root/BuildPalette,
-		$Root/TowerPanel,
-		$Root/EvolutionModal,
-		$Root/Banner
-	]
-	for ctrl in active_controls:
-		if ctrl != null and ctrl.visible and ctrl.get_global_rect().has_point(screen_pos):
-			return true
+func _on_map_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _level == null:
+			show_status("ERROR: level not bound.")
+			return
+		# Convert viewport/screen click into world coordinates via canvas transform.
+		var world_pos := _screen_to_world(event.position)
+		if _level.has_method("handle_map_click"):
+			_level.handle_map_click(world_pos)
+		accept_event()
 
-	var test_runner := $Root.get_node_or_null("TestRunnerUI") as Control
-	if test_runner != null and test_runner.visible and test_runner.get_global_rect().has_point(screen_pos):
-		return true
 
-	return false
+func _screen_to_world(screen_pos: Vector2) -> Vector2:
+	# Prefer the level's mouse world pos (handles Camera2D correctly).
+	if _level is Node2D:
+		return (_level as Node2D).get_global_mouse_position()
+	var xform := get_viewport().get_canvas_transform().affine_inverse()
+	return xform * screen_pos
 
 
 func show_tower(tower: Node) -> void:
@@ -127,7 +140,7 @@ func _on_next_wave_pressed() -> void:
 		var wm = _level.get_node("WaveManager")
 		if wm.can_start_wave():
 			if GameState.phase == GameState.Phase.BUILD and GameState.wave_index > 0:
-				GameState.add_gold(15) # Early call bonus gold!
+				GameState.add_gold(15)
 				status_label.text = "Early Wave Call! +15 Gold Bonus!"
 			wm.start_next_wave()
 
@@ -173,11 +186,9 @@ func _refresh_feats(tower: Node) -> void:
 		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		feat_list.add_child(row)
 
-	var pending := 0
 	if "feats" in tower and tower.feats != null:
-		pending = tower.feats.pending_evolution_points
 		evo_points_label.text = "Evolution Points: %d · Branch: %d/2" % [
-			pending, tower.feats.evolutions_taken
+			tower.feats.pending_evolution_points, tower.feats.evolutions_taken
 		]
 	else:
 		evo_points_label.text = ""
@@ -208,6 +219,5 @@ func _on_feat_completed(tower: Node, feat_id: StringName) -> void:
 	var title: String = str(feat_id)
 	status_label.text = "✨ FEAT COMPLETED: %s!" % title
 	show_banner("✨ FEAT UNLOCKED: %s!" % title)
-
 	if tower == GameState.selected_tower:
 		_refresh_feats(tower)
