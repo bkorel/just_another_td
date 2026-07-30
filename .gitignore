@@ -1,0 +1,29 @@
+# Godot 4
+.godot/
+*.translation
+
+# Import cache / leftovers
+.import/
+export.cfg
+export_presets.cfg
+
+# Mono / C#
+.mono/
+data_*/
+*.csproj
+*.sln
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+
+# Builds
+build/
+exports/
+*.exe
+*.pck
+*.zip

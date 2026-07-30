@@ -1,0 +1,52 @@
+[gd_scene load_steps=5 format=3 uid="uid://level_01"]
+
+[ext_resource type="Script" path="res://scripts/levels/level.gd" id="1_level"]
+[ext_resource type="Script" path="res://scripts/systems/wave_manager.gd" id="2_waves"]
+[ext_resource type="PackedScene" uid="uid://hud_main" path="res://scenes/ui/hud.tscn" id="3_hud"]
+
+[sub_resource type="Curve2D" id="Curve2D_path"]
+_data = {
+"points": PackedVector2Array(-40, 0, 40, 0, 0, 360, -80, 40, 80, -40, 220, 220, -60, 0, 60, 0, 480, 180, -40, 50, 40, -50, 720, 320, -80, 0, 80, 0, 980, 200, -40, 30, 40, -30, 1180, 360, 0, 0, 0, 0, 1280, 400)
+}
+point_count = 7
+
+[node name="Level" type="Node2D"]
+script = ExtResource("1_level")
+
+[node name="Ground" type="Polygon2D" parent="."]
+z_index = -10
+color = Color(0.12, 0.16, 0.14, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="PathDecor" type="Line2D" parent="."]
+z_index = -5
+width = 52.0
+default_color = Color(0.22, 0.2, 0.18, 1)
+points = PackedVector2Array(0, 360, 220, 220, 480, 180, 720, 320, 980, 200, 1180, 360, 1280, 400)
+
+[node name="PathEdge" type="Line2D" parent="."]
+z_index = -4
+width = 2.0
+default_color = Color(0.4, 0.55, 0.42, 0.45)
+points = PackedVector2Array(0, 360, 220, 220, 480, 180, 720, 320, 980, 200, 1180, 360, 1280, 400)
+
+[node name="BaseMarker" type="Polygon2D" parent="."]
+position = Vector2(1260, 400)
+color = Color(0.85, 0.7, 0.35, 1)
+polygon = PackedVector2Array(-18, -18, 18, -18, 18, 18, -18, 18)
+
+[node name="EnemyPath" type="Path2D" parent="."]
+curve = SubResource("Curve2D_path")
+
+[node name="Towers" type="Node2D" parent="."]
+
+[node name="PlacementGhost" type="Polygon2D" parent="."]
+visible = false
+z_index = 20
+color = Color(0.4, 0.8, 0.5, 0.35)
+
+[node name="WaveManager" type="Node" parent="."]
+script = ExtResource("2_waves")
+max_waves = 8
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]

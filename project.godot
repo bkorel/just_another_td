@@ -1,0 +1,28 @@
+; Engine configuration file.
+; Godot 4.x — open this folder in the editor.
+config_version=5
+
+[application]
+config/name="Just Another TD"
+config/description="Tower defence where towers evolve through combat feats."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+GameState="*res://scripts/autoload/game_state.gd"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[layer_names]
+2d_physics/layer_1="world"
+2d_physics/layer_2="enemies"
+2d_physics/layer_3="towers"
+2d_physics/layer_4="projectiles"
+
+[rendering]
+textures/canvas_textures/default_texture_filter=0
