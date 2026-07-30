@@ -58,7 +58,7 @@ curve = SubResource("Curve2D_path")
 
 [node name="PlacementGhost" type="Polygon2D" parent="."]
 visible = false
-z_index = 20
+z_index = 1
 color = Color(0.4, 0.8, 0.5, 0.35)
 
 [node name="WaveManager" type="Node" parent="."]

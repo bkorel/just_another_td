@@ -207,36 +207,39 @@ func _feat(id: StringName, title: String, desc: String, target: float) -> FeatDe
 
 
 func _build_visuals() -> void:
+	var img := Image.create(36, 36, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.3, 0.85, 1.0, 1.0))
+	for x in 36:
+		img.set_pixel(x, 0, Color.BLACK)
+		img.set_pixel(x, 35, Color.BLACK)
+		img.set_pixel(0, x, Color.BLACK)
+		img.set_pixel(35, x, Color.BLACK)
+	var sprite := Sprite2D.new()
+	sprite.texture = ImageTexture.create_from_image(img)
+	sprite.z_index = 100
+	add_child(sprite)
+
 	_body = Polygon2D.new()
 	_body.polygon = PackedVector2Array([
 		Vector2(-16, 16), Vector2(16, 16), Vector2(12, -10), Vector2(-12, -10)
 	])
 	_body.color = Color(0.25, 0.45, 0.75)
-	_body.z_index = 5
+	_body.z_index = 101
 	add_child(_body)
-
-	var outline := Line2D.new()
-	outline.width = 2.5
-	outline.default_color = Color(0.05, 0.05, 0.05, 1)
-	outline.points = PackedVector2Array([
-		Vector2(-16, 16), Vector2(16, 16), Vector2(12, -10), Vector2(-12, -10), Vector2(-16, 16)
-	])
-	outline.z_index = 6
-	add_child(outline)
 
 	_crystal = Polygon2D.new()
 	_crystal.polygon = PackedVector2Array([
 		Vector2(0, -18), Vector2(10, -2), Vector2(0, 10), Vector2(-10, -2)
 	])
-	_crystal.color = Color(0.55, 1.2, 1.5)
-	_crystal.z_index = 7
+	_crystal.color = Color(0.55, 1.0, 1.0)
+	_crystal.z_index = 102
 	add_child(_crystal)
 
 	_range_visual = Line2D.new()
 	_range_visual.width = 2.0
 	_range_visual.default_color = Color(0.4, 0.9, 1.2, 0.55)
 	_range_visual.visible = false
-	_range_visual.z_index = 4
+	_range_visual.z_index = 99
 	add_child(_range_visual)
 	_rebuild_range_visual()
 

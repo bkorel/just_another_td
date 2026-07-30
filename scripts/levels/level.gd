@@ -16,12 +16,14 @@ const TOWER_SPACING := 36.0
 
 var _placing: bool = true
 var _mouse_was_down: bool = false
-var _ignore_click_until_ms: int = 0
+var _hide_ghost_until_ms: int = 0
 
 
 func _ready() -> void:
 	if camera:
 		camera.make_current()
+	# Ghost must NEVER draw above towers — that was hiding placed towers.
+	placement_ghost.z_index = 1
 	wave_manager.enemy_path = path
 	hud.bind_level(self)
 	GameState.reset_run()
@@ -29,23 +31,36 @@ func _ready() -> void:
 	GameState.placement_type_changed.connect(_on_placement_type_changed)
 	_update_ghost()
 	_spawn_ambient_particles()
-	hud.show_status("Green ghost = can build. Left-click to place.")
+	# Place one demo tower immediately so it's obvious the scene works.
+	call_deferred("_spawn_boot_tower")
+	hud.show_status("Click green spots to build. Boot tower should already be visible.")
+
+
+func _spawn_boot_tower() -> void:
+	# Hardcoded safe spot above the road — proves towers render.
+	var boot_pos := Vector2(400, 90)
+	if can_place_at(boot_pos) and GameState.gold >= GameState.ARCHER_COST:
+		GameState.set_placement_type(&"archer")
+		try_place_tower(boot_pos)
+		_deselect()
+		hud.show_status("Boot tower spawned at (400, 90). Click elsewhere to build more.")
 
 
 func _process(_delta: float) -> void:
 	var can_build := _can_build_now()
-	if _placing and can_build:
+	var now_ms := Time.get_ticks_msec()
+	var show_ghost := _placing and can_build and now_ms >= _hide_ghost_until_ms
+	if show_ghost:
 		placement_ghost.visible = true
 		placement_ghost.global_position = get_global_mouse_position()
 		var valid := can_place_at(placement_ghost.global_position)
 		if GameState.selected_placement_type == &"frost":
-			placement_ghost.color = Color(0.3, 0.8, 1.2, 0.55) if valid else Color(0.9, 0.3, 0.3, 0.45)
+			placement_ghost.color = Color(0.3, 0.8, 1.2, 0.35) if valid else Color(0.9, 0.3, 0.3, 0.35)
 		else:
-			placement_ghost.color = Color(0.4, 0.9, 0.5, 0.55) if valid else Color(0.9, 0.3, 0.3, 0.45)
+			placement_ghost.color = Color(0.4, 0.9, 0.5, 0.35) if valid else Color(0.9, 0.3, 0.3, 0.35)
 	else:
 		placement_ghost.visible = false
 
-	# Single reliable click path: poll mouse button edge.
 	var mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if mouse_down and not _mouse_was_down:
 		_on_primary_click()
@@ -70,39 +85,30 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2:
 				GameState.set_placement_type(&"frost")
 				get_viewport().set_input_as_handled()
+			KEY_B:
+				# Emergency build at mouse — always attempts place.
+				try_place_tower(get_global_mouse_position())
+				get_viewport().set_input_as_handled()
 
 
 func _on_primary_click() -> void:
-	var now_ms := Time.get_ticks_msec()
-	if now_ms < _ignore_click_until_ms:
-		return
-
 	var screen_pos := get_viewport().get_mouse_position()
 	if _is_over_interactive_ui(screen_pos):
 		return
-
-	# CRITICAL: use the exact same world position as the green ghost.
-	var world_pos := get_global_mouse_position()
-	handle_map_click(world_pos)
+	handle_map_click(get_global_mouse_position())
 
 
 func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
-	var build_palette := hud.get_node_or_null("Root/BuildPalette") as Control
-	if build_palette != null and build_palette.get_global_rect().has_point(screen_pos):
-		return true
-
-	var tower_panel := hud.get_node_or_null("Root/TowerPanel") as Control
-	if tower_panel != null and tower_panel.visible and tower_panel.get_global_rect().has_point(screen_pos):
-		return true
-
-	var evolution_modal := hud.get_node_or_null("Root/EvolutionModal") as Control
-	if evolution_modal != null and evolution_modal.visible and evolution_modal.get_global_rect().has_point(screen_pos):
-		return true
-
-	var test_ui := hud.get_node_or_null("Root/TestRunnerUI") as Control
-	if test_ui != null and test_ui.visible and test_ui.get_global_rect().has_point(screen_pos):
-		return true
-
+	for path_str in ["Root/BuildPalette", "Root/TowerPanel", "Root/EvolutionModal", "Root/TestRunnerUI"]:
+		var ctrl := hud.get_node_or_null(path_str) as Control
+		if ctrl != null and ctrl.visible and ctrl.get_global_rect().has_point(screen_pos):
+			# BuildPalette is always visible; only treat as UI if over an actual button.
+			if path_str == "Root/BuildPalette":
+				for child in ctrl.get_children():
+					if child is Control and (child as Control).get_global_rect().has_point(screen_pos):
+						return true
+				return false
+			return true
 	return false
 
 
@@ -111,7 +117,6 @@ func handle_map_click(world_pos: Vector2) -> void:
 		hud.show_status("Cannot build: game is not active.")
 		return
 
-	# Prefer selecting an existing tower only if the click is really on it.
 	if _try_select_tower(world_pos):
 		return
 
@@ -140,29 +145,28 @@ func try_place_tower(pos: Vector2) -> bool:
 
 	if not GameState.try_spend_gold(cost):
 		tower.free()
-		hud.show_status("Need $%d (have $%d)." % [cost, GameState.gold])
 		return false
 
-	# Add first, then set transform in parent space.
 	towers_root.add_child(tower)
+	tower.z_index = 50
 	tower.global_position = pos
 	if tower.has_signal("clicked"):
 		tower.clicked.connect(_select_tower)
 
+	# Hide ghost briefly so it can't cover the new tower.
+	placement_ghost.visible = false
+	_hide_ghost_until_ms = Time.get_ticks_msec() + 400
+
 	var tower_name: String = str(tower.get("display_name")) if "display_name" in tower else "Tower"
 	var count := get_tree().get_nodes_in_group("towers").size()
-	hud.show_status("Built %s at (%.0f, %.0f). Towers: %d. Gold: %d" % [tower_name, pos.x, pos.y, count, GameState.gold])
-
-	# Select so range ring + side panel confirm the tower exists.
+	hud.show_status("Built %s! Towers on map: %d. Gold left: %d" % [tower_name, count, GameState.gold])
 	_select_tower(tower)
-	_ignore_click_until_ms = Time.get_ticks_msec() + 180
 	return true
 
 
 func can_place_at(pos: Vector2) -> bool:
 	if pos.x < 24.0 or pos.x > 1256.0 or pos.y < 24.0 or pos.y > 696.0:
 		return false
-
 	if path == null or path.curve == null:
 		return false
 
@@ -176,7 +180,6 @@ func can_place_at(pos: Vector2) -> bool:
 			continue
 		if pos.distance_to((tower as Node2D).global_position) < TOWER_SPACING:
 			return false
-
 	return true
 
 
@@ -244,4 +247,5 @@ func _spawn_ambient_particles() -> void:
 	particles.scale_amount_min = 1.5
 	particles.scale_amount_max = 3.5
 	particles.color = Color(0.4, 0.8, 0.6, 0.25)
+	particles.z_index = -1
 	add_child(particles)
