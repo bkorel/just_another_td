@@ -2,10 +2,10 @@ extends Node2D
 
 ## Level controller: placement, selection, waves, HUD wiring.
 ##
-## Input rules (Godot-correct):
-## - UI buttons receive left-clicks first through the GUI system.
-## - Map placement uses ONLY `_unhandled_input`, which runs when GUI did not
-##   consume the click. Never poll mouse buttons in `_process`.
+## Input rules:
+## - Map LMB is handled by HUD Root `_gui_input` (full-screen Control catcher).
+## - Keyboard shortcuts live in `_unhandled_input` (Space / B / 1 / 2 / Esc).
+## - Never poll mouse buttons in `_process`.
 
 const ArcherTowerScene := preload("res://scenes/towers/tower.tscn")
 const FrostTowerScene := preload("res://scenes/towers/frost_tower.tscn")
@@ -68,7 +68,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
 		return
 
-	# Keyboard always available (except during evolution pick for build keys).
+	# Keyboard only here. Map LMB is handled by HUD Root `_gui_input`
+	# so it never fights the Control system.
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE:
@@ -95,14 +96,6 @@ func _unhandled_input(event: InputEvent) -> void:
 					try_place_tower(get_global_mouse_position())
 				get_viewport().set_input_as_handled()
 				return
-
-	if GameState.phase == GameState.Phase.EVOLUTION_PICK:
-		return
-
-	# Map LMB only if UI did not handle the click.
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		handle_map_click(get_global_mouse_position())
-		get_viewport().set_input_as_handled()
 
 
 func handle_map_click(world_pos: Vector2) -> void:

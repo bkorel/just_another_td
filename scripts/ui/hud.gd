@@ -1,9 +1,15 @@
 extends CanvasLayer
 
 ## HUD: build palette, feat panel, evolution modal.
+##
+## Input model:
+## - Root is a full-screen STOP catcher → map clicks via `_gui_input`.
+## - Non-interactive children IGNORE so clicks fall through to Root.
+## - Buttons STOP and fire on `button_down` (more reliable than `pressed` alone).
 
 const TestRunnerScene := preload("res://scenes/tests/test_runner_scene.tscn")
 
+@onready var root: Control = $Root
 @onready var gold_label: Label = $Root/TopBar/GoldLabel
 @onready var lives_label: Label = $Root/TopBar/LivesLabel
 @onready var wave_label: Label = $Root/TopBar/WaveLabel
@@ -36,7 +42,15 @@ func _ready() -> void:
 	evolution_modal.visible = false
 	banner.visible = false
 
-	_make_ui_click_safe($Root)
+	# Full-screen map click catcher (buttons sit on top and take priority).
+	_set_passthrough($Root)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	if not root.gui_input.is_connected(_on_root_gui_input):
+		root.gui_input.connect(_on_root_gui_input)
+
+	# Re-enable interactive panels after passthrough pass.
+	tower_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	evolution_modal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_wire_button(archer_btn, _on_archer_pressed)
 	_wire_button(frost_btn, _on_frost_pressed)
@@ -61,23 +75,43 @@ func _ready() -> void:
 	hint_label.text = "Space=wave · B=build · 1/2=type · LMB map=build"
 
 
-func _make_ui_click_safe(node: Node) -> void:
-	# Everything ignores mouse by default; buttons re-enabled in _wire_button.
-	if node is Control:
-		var c := node as Control
-		if not (node is BaseButton):
-			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+func _set_passthrough(node: Node) -> void:
+	# Labels/containers ignore mouse so Root receives map clicks under them.
+	# Buttons are skipped here and re-enabled in _wire_button.
+	if node is Control and not (node is BaseButton):
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for child in node.get_children():
-		_make_ui_click_safe(child)
+		_set_passthrough(child)
 
 
 func _wire_button(btn: BaseButton, callable: Callable) -> void:
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn.focus_mode = Control.FOCUS_ALL
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	# button_down proves the click reached the control even if pressed is flaky.
-	btn.button_down.connect(func(): show_status("Clicked: %s" % btn.text))
-	btn.pressed.connect(callable)
+	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	# Single connection: ACTION_MODE_BUTTON_PRESS makes `pressed` fire on down
+	# (avoids double-fire if both button_down and pressed were connected).
+	if not btn.pressed.is_connected(callable):
+		btn.pressed.connect(callable)
+
+
+func _on_root_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if GameState.phase == GameState.Phase.EVOLUTION_PICK:
+		return
+	if _level == null:
+		show_status("ERROR: level not bound.")
+		root.accept_event()
+		return
+
+	var world_pos: Vector2 = _level.get_global_mouse_position()
+	if _level.has_method("handle_map_click"):
+		_level.handle_map_click(world_pos)
+	root.accept_event()
 
 
 func bind_level(level: Node) -> void:
@@ -137,6 +171,7 @@ func _on_test_pressed() -> void:
 	var existing = $Root.get_node_or_null("TestRunnerUI")
 	if existing:
 		existing.queue_free()
+		show_status("Unit tests closed.")
 		return
 	var test_ui = TestRunnerScene.instantiate()
 	$Root.add_child(test_ui)
@@ -154,7 +189,6 @@ func _on_next_wave_pressed() -> void:
 
 	var wm: Node = _level.get_node("WaveManager")
 	if wm.has_method("can_start_wave") and not wm.can_start_wave():
-		# Try recover stuck phase.
 		if GameState.phase != GameState.Phase.WAVE and GameState.phase != GameState.Phase.WON and GameState.phase != GameState.Phase.LOST:
 			GameState.phase = GameState.Phase.BUILD
 		if not wm.can_start_wave():
