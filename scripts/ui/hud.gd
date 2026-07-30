@@ -62,6 +62,30 @@ func bind_level(level: Node) -> void:
 	_level = level
 
 
+func show_status(msg: String) -> void:
+	if status_label != null:
+		status_label.text = msg
+
+
+func is_position_over_gui(screen_pos: Vector2) -> bool:
+	var active_controls: Array[Control] = [
+		$Root/TopBar,
+		$Root/BuildPalette,
+		$Root/TowerPanel,
+		$Root/EvolutionModal,
+		$Root/Banner
+	]
+	for ctrl in active_controls:
+		if ctrl != null and ctrl.visible and ctrl.get_global_rect().has_point(screen_pos):
+			return true
+
+	var test_runner := $Root.get_node_or_null("TestRunnerUI") as Control
+	if test_runner != null and test_runner.visible and test_runner.get_global_rect().has_point(screen_pos):
+		return true
+
+	return false
+
+
 func show_tower(tower: Node) -> void:
 	if tower == null:
 		tower_panel.visible = false

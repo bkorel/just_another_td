@@ -38,7 +38,7 @@ func _process(_delta: float) -> void:
 		placement_ghost.visible = false
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if GameState.phase == GameState.Phase.EVOLUTION_PICK or GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
 		return
 
@@ -62,6 +62,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if hud.is_position_over_gui(event.position):
+			return
+
 		var pos := get_global_mouse_position()
 		if _try_select_tower(pos):
 			get_viewport().set_input_as_handled()
@@ -73,9 +76,15 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _try_place_tower(pos: Vector2) -> bool:
-	if not _can_place_at(pos):
-		return false
 	var cost := GameState.get_current_placement_cost()
+	if GameState.gold < cost:
+		hud.show_status("Need $%d to build tower! (Current Gold: $%d)" % [cost, GameState.gold])
+		return false
+
+	if not _can_place_at(pos):
+		hud.show_status("Cannot place tower here! (Too close to path or another tower)")
+		return false
+
 	if not GameState.try_spend_gold(cost):
 		return false
 
@@ -84,6 +93,9 @@ func _try_place_tower(pos: Vector2) -> bool:
 	tower.global_position = pos
 	$Towers.add_child(tower)
 	tower.clicked.connect(func(t): _select_tower(t))
+
+	var tower_name: String = tower.get("display_name") if "display_name" in tower else "Tower"
+	hud.show_status("Built %s ($%d)!" % [tower_name, cost])
 	return true
 
 
@@ -95,16 +107,16 @@ func _can_place_at(pos: Vector2) -> bool:
 	var baked := path.curve.get_baked_points()
 	var step_size := 3
 	for i in range(0, baked.size(), step_size):
-		if pos.distance_to(path.to_global(baked[i])) < 38.0:
+		if pos.distance_to(path.to_global(baked[i])) < 32.0:
 			return false
 
 	# Keep away from existing towers
 	for tower in get_tree().get_nodes_in_group("towers"):
-		if pos.distance_to(tower.global_position) < 36.0:
+		if pos.distance_to(tower.global_position) < 32.0:
 			return false
 
 	# Field boundaries
-	if pos.x < 30 or pos.x > 1250 or pos.y < 30 or pos.y > 690:
+	if pos.x < 20 or pos.x > 1260 or pos.y < 20 or pos.y > 700:
 		return false
 
 	return true
