@@ -1,6 +1,11 @@
 extends Node2D
 
 ## Level controller: placement, selection, waves, HUD wiring.
+##
+## Input rules (Godot-correct):
+## - UI buttons receive left-clicks first through the GUI system.
+## - Map placement uses ONLY `_unhandled_input`, which runs when GUI did not
+##   consume the click. Never poll mouse buttons in `_process`.
 
 const ArcherTowerScene := preload("res://scenes/towers/tower.tscn")
 const FrostTowerScene := preload("res://scenes/towers/frost_tower.tscn")
@@ -15,14 +20,13 @@ const TOWER_SPACING := 36.0
 @onready var camera: Camera2D = $MainCamera
 
 var _placing: bool = true
-var _mouse_was_down: bool = false
 var _hide_ghost_until_ms: int = 0
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	if camera:
 		camera.make_current()
-	# Ghost must NEVER draw above towers — that was hiding placed towers.
 	placement_ghost.z_index = 1
 	wave_manager.enemy_path = path
 	hud.bind_level(self)
@@ -31,19 +35,17 @@ func _ready() -> void:
 	GameState.placement_type_changed.connect(_on_placement_type_changed)
 	_update_ghost()
 	_spawn_ambient_particles()
-	# Place one demo tower immediately so it's obvious the scene works.
 	call_deferred("_spawn_boot_tower")
-	hud.show_status("Click green spots to build. Boot tower should already be visible.")
+	hud.show_status("Space=wave, B=build at cursor, LMB on map=build/select")
 
 
 func _spawn_boot_tower() -> void:
-	# Hardcoded safe spot above the road — proves towers render.
 	var boot_pos := Vector2(400, 90)
 	if can_place_at(boot_pos) and GameState.gold >= GameState.ARCHER_COST:
 		GameState.set_placement_type(&"archer")
 		try_place_tower(boot_pos)
 		_deselect()
-		hud.show_status("Boot tower spawned at (400, 90). Click elsewhere to build more.")
+		hud.show_status("Boot tower at (400,90). Press Space to start wave, or B to build.")
 
 
 func _process(_delta: float) -> void:
@@ -61,69 +63,46 @@ func _process(_delta: float) -> void:
 	else:
 		placement_ghost.visible = false
 
-	var mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
-	if mouse_down and not _mouse_was_down:
-		_on_primary_click()
-	_mouse_was_down = mouse_down
-
 
 func _unhandled_input(event: InputEvent) -> void:
-	if GameState.phase == GameState.Phase.EVOLUTION_PICK or GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
+	if GameState.phase == GameState.Phase.WON or GameState.phase == GameState.Phase.LOST:
 		return
 
+	# Keyboard always available (except during evolution pick for build keys).
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE:
-				if hud.has_method("request_start_wave"):
-					hud.request_start_wave()
-				else:
-					wave_manager.start_next_wave()
+				hud.request_start_wave()
 				get_viewport().set_input_as_handled()
+				return
 			KEY_ESCAPE:
-				_deselect()
+				if GameState.phase != GameState.Phase.EVOLUTION_PICK:
+					_deselect()
 				get_viewport().set_input_as_handled()
+				return
 			KEY_1:
 				GameState.set_placement_type(&"archer")
+				hud.show_status("Selected Archer. Press B or click map.")
 				get_viewport().set_input_as_handled()
+				return
 			KEY_2:
 				GameState.set_placement_type(&"frost")
+				hud.show_status("Selected Frost. Press B or click map.")
 				get_viewport().set_input_as_handled()
+				return
 			KEY_B:
-				try_place_tower(get_global_mouse_position())
+				if GameState.phase != GameState.Phase.EVOLUTION_PICK:
+					try_place_tower(get_global_mouse_position())
 				get_viewport().set_input_as_handled()
+				return
 
-
-func _on_primary_click() -> void:
-	# If the cursor is over any real UI control (buttons/panels), let the GUI handle it.
-	var hovered := get_viewport().gui_get_hovered_control()
-	if hovered != null and _is_interactive_control(hovered):
+	if GameState.phase == GameState.Phase.EVOLUTION_PICK:
 		return
-	handle_map_click(get_global_mouse_position())
 
-
-func _is_interactive_control(ctrl: Control) -> bool:
-	# Ignore labels/containers that pass mouse through; react only to clickable UI.
-	if ctrl is BaseButton:
-		return true
-	if ctrl == null:
-		return false
-	# Walk up: if any ancestor is a button or visible modal/panel that stops mouse.
-	var node: Node = ctrl
-	while node != null:
-		if node is BaseButton:
-			return true
-		if node is PanelContainer and (node as Control).visible and (node as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
-			return true
-		node = node.get_parent()
-	return false
-
-
-func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
-	# Kept for compatibility; prefer gui_get_hovered_control path.
-	var hovered := get_viewport().gui_get_hovered_control()
-	if hovered != null:
-		return _is_interactive_control(hovered)
-	return false
+	# Map LMB only if UI did not handle the click.
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		handle_map_click(get_global_mouse_position())
+		get_viewport().set_input_as_handled()
 
 
 func handle_map_click(world_pos: Vector2) -> void:
@@ -148,7 +127,7 @@ func try_place_tower(pos: Vector2) -> bool:
 		return false
 
 	if not can_place_at(pos):
-		hud.show_status("Invalid spot — stay off the road and away from other towers.")
+		hud.show_status("Invalid spot (%.0f, %.0f) — move off the road." % [pos.x, pos.y])
 		return false
 
 	var scene: PackedScene = FrostTowerScene if GameState.selected_placement_type == &"frost" else ArcherTowerScene
@@ -167,13 +146,12 @@ func try_place_tower(pos: Vector2) -> bool:
 	if tower.has_signal("clicked"):
 		tower.clicked.connect(_select_tower)
 
-	# Hide ghost briefly so it can't cover the new tower.
 	placement_ghost.visible = false
 	_hide_ghost_until_ms = Time.get_ticks_msec() + 400
 
 	var tower_name: String = str(tower.get("display_name")) if "display_name" in tower else "Tower"
 	var count := get_tree().get_nodes_in_group("towers").size()
-	hud.show_status("Built %s! Towers on map: %d. Gold left: %d" % [tower_name, count, GameState.gold])
+	hud.show_status("Built %s! Towers: %d. Gold: %d" % [tower_name, count, GameState.gold])
 	_select_tower(tower)
 	return true
 
@@ -251,15 +229,15 @@ func _update_ghost() -> void:
 
 func _spawn_ambient_particles() -> void:
 	var particles := CPUParticles2D.new()
-	particles.amount = 32
+	particles.amount = 24
 	particles.lifetime = 6.0
-	particles.preprocess = 6.0
+	particles.preprocess = 3.0
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 	particles.emission_rect_extents = Vector2(640, 360)
 	particles.position = Vector2(640, 360)
 	particles.gravity = Vector2(-5, -8)
 	particles.scale_amount_min = 1.5
 	particles.scale_amount_max = 3.5
-	particles.color = Color(0.4, 0.8, 0.6, 0.25)
+	particles.color = Color(0.4, 0.8, 0.6, 0.2)
 	particles.z_index = -1
 	add_child(particles)
