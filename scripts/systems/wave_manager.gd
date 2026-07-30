@@ -1,6 +1,6 @@
 extends Node
 
-## Spawns waves along a Path2D and tracks per-tower kill shares for feats.
+## Spawns composition-based waves along Path2D and tracks per-tower feat statistics.
 
 signal wave_started(index: int)
 signal wave_cleared(index: int)
@@ -14,11 +14,6 @@ const EnemyScene := preload("res://scenes/enemies/enemy.tscn")
 var _spawning: bool = false
 var _alive: int = 0
 var _wave_kills: Dictionary = {} # tower instance_id -> count
-var _pending_start: bool = false
-
-
-func _ready() -> void:
-	pass
 
 
 func can_start_wave() -> bool:
@@ -77,29 +72,49 @@ func _award_wave_dominance() -> void:
 
 func _spawn_wave(index: int) -> void:
 	_spawning = true
-	var count := 5 + index * 2
-	var hp := 35.0 + index * 12.0
-	var speed := 70.0 + index * 4.0
+	var count := 6 + index * 2
+	var hp_scale := 1.0 + (index - 1) * 0.28
+	var speed_scale := 1.0 + (index - 1) * 0.05
+
 	for i in count:
-		await get_tree().create_timer(0.45).timeout
+		await get_tree().create_timer(0.42).timeout
 		if GameState.phase == GameState.Phase.LOST:
 			_spawning = false
 			return
-		var is_elite := (i == count - 1 and index % 3 == 0)
-		_spawn_enemy(hp * (2.2 if is_elite else 1.0), speed * (0.85 if is_elite else 1.0), is_elite, 10 + index if not is_elite else 25 + index * 2)
+
+		var e_type := _select_type_for_wave(index, i, count)
+		_spawn_enemy_type(e_type, hp_scale, speed_scale)
+
 	_spawning = false
 	_check_wave_end()
 
 
-func _spawn_enemy(hp: float, speed: float, elite: bool, gold: int) -> void:
+func _select_type_for_wave(wave_idx: int, enemy_idx: int, total_count: int) -> int:
+	# Enemy.Type enum: 0=BASIC, 1=RUNNER, 2=TANK, 3=ELITE
+	if enemy_idx == total_count - 1 and (wave_idx % 2 == 0 or wave_idx == max_waves):
+		return 3 # ELITE at wave end
+
+	if wave_idx <= 2:
+		return 0 # BASIC
+	elif wave_idx <= 4:
+		return 1 if enemy_idx % 2 == 1 else 0 # BASIC + RUNNER
+	elif wave_idx <= 6:
+		if enemy_idx % 3 == 0:
+			return 2 # TANK
+		elif enemy_idx % 3 == 1:
+			return 1 # RUNNER
+		return 0 # BASIC
+	else:
+		# Late waves: mixed heavy
+		return enemy_idx % 3
+
+
+func _spawn_enemy_type(type_id: int, hp_scale: float, speed_scale: float) -> void:
 	if enemy_path == null:
 		return
 	var enemy: PathFollow2D = EnemyScene.instantiate()
-	enemy.max_hp = hp
-	enemy.move_speed = speed
-	enemy.is_elite = elite
-	enemy.gold_reward = gold
 	enemy_path.add_child(enemy)
+	enemy.setup_type(type_id, hp_scale, speed_scale)
 	_alive += 1
 	enemy.died.connect(func(e, killer): notify_enemy_died(e, killer))
 	enemy.leaked.connect(func(e): notify_enemy_leaked(e))
