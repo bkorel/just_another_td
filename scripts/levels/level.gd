@@ -15,6 +15,7 @@ const TOWER_SPACING := 36.0
 @onready var camera: Camera2D = $MainCamera
 
 var _placing: bool = true
+var _mouse_was_down: bool = false
 
 
 func _ready() -> void:
@@ -43,6 +44,13 @@ func _process(_delta: float) -> void:
 	else:
 		placement_ghost.visible = false
 
+	# Input polling deliberately avoids GUI event propagation issues between
+	# CanvasLayer controls and the world Node2D.
+	var mouse_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	if mouse_down and not _mouse_was_down:
+		_handle_polled_map_click()
+	_mouse_was_down = mouse_down
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Keyboard only here; map clicks come from HUD MapClickCatcher.
@@ -63,6 +71,34 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2:
 				GameState.set_placement_type(&"frost")
 				get_viewport().set_input_as_handled()
+
+
+func _handle_polled_map_click() -> void:
+	if not _can_build_now():
+		return
+
+	var screen_pos := get_viewport().get_mouse_position()
+	if _is_over_interactive_ui(screen_pos):
+		return
+
+	handle_map_click(get_global_mouse_position())
+
+
+func _is_over_interactive_ui(screen_pos: Vector2) -> bool:
+	# These are the only clickable HUD regions. The rest of the screen is map.
+	var build_palette := hud.get_node_or_null("Root/BuildPalette") as Control
+	if build_palette != null and build_palette.get_global_rect().has_point(screen_pos):
+		return true
+
+	var tower_panel := hud.get_node_or_null("Root/TowerPanel") as Control
+	if tower_panel != null and tower_panel.visible and tower_panel.get_global_rect().has_point(screen_pos):
+		return true
+
+	var evolution_modal := hud.get_node_or_null("Root/EvolutionModal") as Control
+	if evolution_modal != null and evolution_modal.visible and evolution_modal.get_global_rect().has_point(screen_pos):
+		return true
+
+	return false
 
 
 ## Called by HUD MapClickCatcher with world coordinates.

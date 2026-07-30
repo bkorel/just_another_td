@@ -36,9 +36,9 @@ func _ready() -> void:
 	evolution_modal.visible = false
 	banner.visible = false
 
-	# MapCatcher receives all map clicks; buttons above it still work (drawn later).
-	map_click.gui_input.connect(_on_map_gui_input)
-	map_click.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Placement is polled by Level to avoid GUI propagation conflicts. This
+	# control is visual-only and must not consume map clicks.
+	map_click.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_click.z_index = -1
 	$Root/BuildPalette.z_index = 2
 	$Root/TopBar.z_index = 2
@@ -77,26 +77,6 @@ func bind_level(level: Node) -> void:
 func show_status(msg: String) -> void:
 	if status_label != null:
 		status_label.text = msg
-
-
-func _on_map_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _level == null:
-			show_status("ERROR: level not bound.")
-			return
-		# Convert viewport/screen click into world coordinates via canvas transform.
-		var world_pos := _screen_to_world(event.position)
-		if _level.has_method("handle_map_click"):
-			_level.handle_map_click(world_pos)
-		map_click.accept_event()
-
-
-func _screen_to_world(screen_pos: Vector2) -> Vector2:
-	# Prefer the level's mouse world pos (handles Camera2D correctly).
-	if _level is Node2D:
-		return (_level as Node2D).get_global_mouse_position()
-	var xform := get_viewport().get_canvas_transform().affine_inverse()
-	return xform * screen_pos
 
 
 func show_tower(tower: Node) -> void:
